@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekapitulasi Pengeluaran Proyek - Multi-Lokasi & Cloud Sync</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#172033',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 12mm;
+            }
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                font-size: 11pt;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-flex {
+                display: flex !important;
+            }
+            .print-container {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .print-header-box {
+                background-color: #1e293b !important;
+                color: #ffffff !important;
+                padding: 10px 16px !important;
+                border-radius: 4px !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-size: 9.5pt !important;
+            }
+            th, td {
+                border: 1px solid #cbd5e1 !important;
+                padding: 6px 8px !important;
+            }
+            th {
+                background-color: #f1f5f9 !important;
+                color: #0f172a !important;
+                font-weight: 700 !important;
+            }
+            .badge-print {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                color: #0f172a !important;
+                font-weight: 500 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 no-print pointer-events-none"></div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-6 transform transition-all">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <h3 id="confirm-title" class="text-lg font-bold text-slate-900">Konfirmasi Tindakan</h3>
+            </div>
+            <p id="confirm-message" class="text-sm text-slate-600 mb-6 leading-relaxed">Apakah Anda yakin ingin melanjutkan?</p>
+            <div class="flex justify-end gap-2.5">
+                <button id="confirm-cancel-btn" type="button" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Batal</button>
+                <button id="confirm-ok-btn" type="button" class="px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pengaturan Cloud Sync (Google Sheets) & Backup JSON -->
+    <div id="cloud-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full p-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-display font-bold text-slate-900">Sinkronisasi Cloud & Backup Data</h3>
+                        <p class="text-[11px] text-slate-500">Solusi penyimpanan permanen untuk Google Sites & lintas perangkat</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCloudModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Bagian 1: Google Sheets Web App URL -->
+                <div class="p-4 rounded-xl bg-blue-50/60 border border-blue-200 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-900">1. Koneksi Google Sheets (Apps Script)</span>
+                        <span id="modal-cloud-badge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">Belum Terhubung</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Tempel URL Web App dari Google Apps Script Anda agar data otomatis tersimpan ke Google Sheets saat digunakan di Google Sites.
+                    </p>
+                    <div>
+                        <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 text-xs bg-white border border-blue-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                        <button type="button" onclick="saveGasUrlAndPull()" class="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition">
+                            Hubungkan & Tarik Data
+                        </button>
+                        <button type="button" onclick="pushAllToCloud(true)" class="px-3.5 py-2 text-xs font-semibold text-blue-700 bg-white hover:bg-blue-100 border border-blue-300 rounded-lg transition">
+                            Kirim Data Lokal ke Sheets
+                        </button>
+                        <button type="button" id="disconnect-gas-btn" onclick="disconnectGasUrl()" class="hidden px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition ml-auto">
+                            Putuskan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bagian 2: Backup & Restore File JSON -->
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-700 block">2. Backup & Restore File (.JSON)</span>
+                    <p class="text-xs text-slate-500">Unduh seluruh data proyek sebagai file cadangan atau muat ulang dari file backup.</p>
+                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                        <button type="button" onclick="exportBackupJSON()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition">
+                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            <span>Unduh Backup (.json)</span>
+                        </button>
+                        <label class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg cursor-pointer transition">
+                            <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                            <span>Muat Backup (.json)</span>
+                            <input type="file" id="import-json-input" accept=".json" onchange="importBackupJSON(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah / Edit Proyek -->
+    <div id="project-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full p-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    </div>
+                    <h3 id="project-modal-title" class="text-lg font-display font-bold text-slate-900">Tambah Proyek Baru</h3>
+                </div>
+                <button type="button" onclick="closeProjectModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <form id="project-form" onsubmit="handleSaveProject(event)" class="space-y-4">
+                <input type="hidden" id="project-edit-id" value="">
+                
+                <div>
+                    <label for="proj-nama" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Nama Pekerjaan / Proyek <span class="text-rose-500">*</span></label>
+                    <input type="text" id="proj-nama" placeholder="Contoh: Renovasi Kantor Pegadaian Cabang Malang" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="proj-lokasi" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Lokasi / Kota <span class="text-rose-500">*</span></label>
+                        <input type="text" id="proj-lokasi" placeholder="Contoh: Malang" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label for="proj-periode" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Periode Pelaksanaan <span class="text-rose-500">*</span></label>
+                        <input type="text" id="proj-periode" placeholder="Contoh: Januari 2027" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="proj-rab" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Pagu Anggaran / RAB (Rp) <span class="text-rose-500">*</span></label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500 font-medium text-sm">Rp</span>
+                        <input type="number" id="proj-rab" min="0" step="1000" placeholder="5000000" required class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold tabular-nums focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2.5">
+                    <button type="button" id="delete-project-btn" onclick="confirmDeleteProject()" class="hidden px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition">
+                        Hapus Proyek Ini
+                    </button>
+                    <div class="flex items-center gap-2.5 ml-auto">
+                        <button type="button" onclick="closeProjectModal()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition">Simpan Proyek</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Top Navigation / Multi-Project Switcher Bar -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+            <!-- Brand & Project Switcher -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-bold text-emerald-400 tracking-widest uppercase block">REKAPITULASI PENGELUARAN PROYEK</span>
+                        <h1 class="text-sm font-display font-bold tracking-tight text-white">Multi-Project Cost Control</h1>
+                    </div>
+                </div>
+
+                <div class="h-6 w-px bg-slate-700 hidden sm:block"></div>
+
+                <!-- Project Switcher Controls -->
+                <div class="flex items-center gap-1.5 flex-1 sm:flex-initial">
+                    <div class="relative flex-1 sm:w-72">
+                        <select id="project-switcher" onchange="switchProject(this.value)" aria-label="Pilih Proyek Aktif" class="w-full appearance-none bg-slate-800 hover:bg-slate-750 text-white text-xs font-semibold pl-3 pr-8 py-2 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer truncate">
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 pointer-events-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                    </div>
+
+                    <button type="button" id="edit-active-project-btn" onclick="openProjectModal(true)" title="Edit Detail & RAB Proyek Aktif" class="p-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+
+                    <button type="button" onclick="openProjectModal(false)" title="Tambah Lokasi Proyek Baru" class="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-700/60 rounded-lg transition shrink-0">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <span>Proyek Baru</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Action Toolbar -->
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Cloud Sync Button -->
+                <button type="button" onclick="openCloudModal()" id="cloud-sync-btn" title="Pengaturan Cloud Google Sheets & Backup JSON" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-200 bg-blue-950/70 hover:bg-blue-900/80 border border-blue-700/60 rounded-lg transition">
+                    <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                    <span id="cloud-status-text">Cloud / Backup</span>
+                </button>
+
+                <button type="button" onclick="exportToCSV()" title="Unduh format Excel CSV" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition">
+                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <span>Ekspor CSV</span>
+                </button>
+
+                <button type="button" onclick="confirmResetData()" title="Kembalikan data contoh awal" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-300 bg-rose-950/50 hover:bg-rose-900/60 border border-rose-800/50 rounded-lg transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <span>Reset Demo</span>
+                </button>
+
+                <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-xs transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span>Cetak / PDF</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 print-container">
+
+        <!-- KOP LAPORAN PROYEK -->
+        <section class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="bg-slate-900 text-white px-5 py-3 flex flex-col sm:flex-row items-center justify-between gap-1 print-header-box">
+                <h2 id="report-main-title" class="text-sm sm:text-base font-display font-bold tracking-widest uppercase">REKAPITULASI PENGELUARAN PROYEK</h2>
+                <span id="report-print-date" class="text-[11px] text-slate-300 font-medium">Dicetak: -</span>
+            </div>
+            
+            <div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white">
+                <div class="md:col-span-6 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 w-24 shrink-0">Pekerjaan :</span>
+                    <div id="display-pekerjaan" class="text-sm sm:text-base font-bold text-slate-900">
+                        Pengecatan Kantor Pegadaian UPC Margorejo, Surabaya
+                    </div>
+                </div>
+
+                <div class="md:col-span-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 w-20 shrink-0">Lokasi :</span>
+                    <div class="flex items-center gap-1.5">
+                        <span id="display-lokasi" class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                            Surabaya
+                        </span>
+                    </div>
+                </div>
+
+                <div class="md:col-span-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 w-20 shrink-0">Periode :</span>
+                    <div id="display-periode" class="text-sm font-semibold text-slate-800">
+                        November 2026
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- KARTU RINGKASAN KPI -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Pengeluaran</span>
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center no-print">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                </div>
+                <div>
+                    <div id="kpi-total-expense" class="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">Rp 462.000</div>
+                    <p id="kpi-filtered-note" class="text-xs text-slate-500 mt-1">Akumulasi seluruh pengeluaran</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Item Transaksi</span>
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center no-print">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </div>
+                </div>
+                <div>
+                    <div id="kpi-item-count" class="text-2xl font-bold text-slate-900 tabular-nums">3 Item</div>
+                    <p id="kpi-avg-expense" class="text-xs text-slate-500 mt-1 tabular-nums">Rata-rata Rp 154.000 / item</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Pengeluaran Terbesar</span>
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center no-print">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    </div>
+                </div>
+                <div>
+                    <div id="kpi-max-amount" class="text-2xl font-bold text-slate-900 tabular-nums">Rp 240.000</div>
+                    <p id="kpi-max-label" class="text-xs text-slate-600 font-medium mt-1 truncate">acian putih 2 sak</p>
+                </div>
+            </div>
+
+            <div onclick="handleBudgetCardClick()" title="Klik untuk mengubah Pagu Anggaran / RAB proyek ini" class="bg-white rounded-xl border border-slate-200 hover:border-emerald-400 p-5 shadow-xs flex flex-col justify-between cursor-pointer transition group">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                        Sisa Anggaran (RAB)
+                        <svg id="budget-edit-icon" class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition no-print" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    </span>
+                    <span id="kpi-budget-percent" class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 tabular-nums">9.2%</span>
+                </div>
+                <div>
+                    <div id="kpi-remaining-budget" class="text-2xl font-bold text-emerald-700 tabular-nums">Rp 4.538.000</div>
+                    <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                        <div id="kpi-budget-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-300" style="width: 9.24%"></div>
+                    </div>
+                    <p id="kpi-total-budget-label" class="text-[11px] text-slate-500 mt-1 tabular-nums">Dari Pagu: Rp 5.000.000</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISUALISASI RINGKAS -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-display font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Proporsi Pengeluaran per Kategori
+                    </h3>
+                    <span class="text-xs text-slate-400">Berdasarkan tampilan aktif</span>
+                </div>
+                <div id="category-breakdown-container" class="space-y-3"></div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="secondary-chart-title" class="text-sm font-display font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                        <span>Ringkasan per Toko / Vendor / Keterangan</span>
+                    </h3>
+                    <span id="secondary-chart-subtitle" class="text-xs text-slate-400">Top Supplier</span>
+                </div>
+                <div id="vendor-breakdown-container" class="space-y-2.5 max-h-48 overflow-y-auto pr-1"></div>
+            </div>
+        </section>
+
+        <!-- FORM INPUT / EDIT TRANSAKSI -->
+        <section id="form-section" class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden no-print transition-all">
+            <div class="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div id="form-mode-indicator" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                    <h3 id="form-title" class="text-sm font-display font-bold text-slate-800">Tambah Pengeluaran Baru</h3>
+                </div>
+                <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md transition">
+                    Batal Edit
+                </button>
+            </div>
+
+            <form id="expense-form" onsubmit="handleFormSubmit(event)" class="p-5">
+                <input type="hidden" id="edit-id" value="">
+                <input type="hidden" id="edit-source-project-id" value="">
+
+                <div id="form-project-selector-wrapper" class="hidden mb-4 p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex flex-col sm:flex-row sm:items-center gap-2">
+                    <label for="input-target-project" class="text-xs font-bold text-blue-900 shrink-0 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Alokasikan ke Proyek :
+                    </label>
+                    <select id="input-target-project" class="flex-1 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+                    <div class="lg:col-span-2">
+                        <label for="input-tanggal" class="block text-xs font-semibold text-slate-600 mb-1">Tanggal <span class="text-rose-500">*</span></label>
+                        <input type="date" id="input-tanggal" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+
+                    <div class="lg:col-span-2">
+                        <label for="input-kategori" class="block text-xs font-semibold text-slate-600 mb-1">Kategori <span class="text-rose-500">*</span></label>
+                        <select id="input-kategori" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="Material">Material</option>
+                            <option value="Upah Tenaga Kerja">Upah Tenaga Kerja</option>
+                            <option value="Operasional & Transport">Operasional & Transport</option>
+                            <option value="Peralatan">Peralatan</option>
+                            <option value="Lain-lain">Lain-lain</option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-2 lg:col-span-3">
+                        <label for="input-uraian" class="block text-xs font-semibold text-slate-600 mb-1">Uraian Pengeluaran <span class="text-rose-500">*</span></label>
+                        <input type="text" id="input-uraian" placeholder="Contoh: Cat tembok Dulux 20kg" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+
+                    <div class="lg:col-span-1">
+                        <label for="input-volume" class="block text-xs font-semibold text-slate-600 mb-1">Volume <span class="text-rose-500">*</span></label>
+                        <input type="number" id="input-volume" step="any" min="0.01" placeholder="1" required oninput="updateLiveTotalPreview()" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg tabular-nums focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+
+                    <div class="lg:col-span-2">
+                        <label for="input-harga" class="block text-xs font-semibold text-slate-600 mb-1">Harga Satuan (Rp) <span class="text-rose-500">*</span></label>
+                        <input type="number" id="input-harga" step="1" min="0" placeholder="120000" required oninput="updateLiveTotalPreview()" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg tabular-nums focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+
+                    <div class="lg:col-span-2">
+                        <label for="input-keterangan" class="block text-xs font-semibold text-slate-600 mb-1">Keterangan / Toko</label>
+                        <input type="text" id="input-keterangan" list="vendor-suggestions" placeholder="Tk. SBR Lingkar Timur" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <datalist id="vendor-suggestions">
+                            <option value="Tk. SBR Lingkar Timur">
+                        </datalist>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-2 bg-slate-50 px-3.5 py-2 rounded-lg border border-slate-200">
+                        <span class="text-xs font-medium text-slate-500">Estimasi Total Jumlah:</span>
+                        <span id="live-total-preview" class="text-base font-bold text-emerald-700 tabular-nums">Rp 0</span>
+                    </div>
+
+                    <div class="flex items-center gap-2.5 ml-auto">
+                        <button type="button" onclick="resetForm()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition">
+                            Bersihkan
+                        </button>
+                        <button type="submit" id="submit-btn" class="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            <span id="submit-btn-text">Simpan Pengeluaran</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- TABEL REKAPITULASI PENGELUARAN UTAMA -->
+        <section class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-4 bg-slate-50/70 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 no-print">
+                <div class="relative flex-1 max-w-md">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </span>
+                    <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Cari uraian barang atau nama toko/vendor..." class="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <select id="filter-category" onchange="applyFilters()" class="px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="ALL">Semua Kategori</option>
+                        <option value="Material">Material</option>
+                        <option value="Upah Tenaga Kerja">Upah Tenaga Kerja</option>
+                        <option value="Operasional & Transport">Operasional & Transport</option>
+                        <option value="Peralatan">Peralatan</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+
+                    <select id="sort-by" onchange="applyFilters()" class="px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="default">Urutan: Input Awal</option>
+                        <option value="date-desc">Tanggal: Terbaru</option>
+                        <option value="date-asc">Tanggal: Terlama</option>
+                        <option value="total-desc">Total: Terbesar</option>
+                        <option value="total-asc">Total: Terkecil</option>
+                    </select>
+
+                    <button type="button" id="reset-filter-btn" onclick="resetFilters()" class="hidden px-2.5 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition">
+                        Reset Filter
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/80 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-700">
+                            <th class="py-3 px-4 text-center w-12">No.</th>
+                            <th class="py-3 px-4 w-28">Tanggal</th>
+                            <th id="th-project-col" class="py-3 px-4 w-44 hidden">Lokasi / Proyek</th>
+                            <th class="py-3 px-4 w-44">Kategori</th>
+                            <th class="py-3 px-4 min-w-[200px]">Uraian Pengeluaran</th>
+                            <th class="py-3 px-4 text-right w-24">Volume</th>
+                            <th class="py-3 px-4 text-right w-36">Harga</th>
+                            <th class="py-3 px-4 text-right w-40">Total Jumlah</th>
+                            <th class="py-3 px-4 min-w-[170px]">Keterangan</th>
+                            <th class="py-3 px-4 text-center w-24 no-print">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expense-table-body" class="divide-y divide-slate-200 text-sm"></tbody>
+                    <tfoot>
+                        <tr class="bg-slate-50 border-t-2 border-slate-300 font-bold text-slate-900">
+                            <td id="tfoot-label-colspan" colspan="6" class="py-3.5 px-4 text-right text-xs uppercase tracking-wider text-slate-600">
+                                TOTAL KESELURUHAN PENGELUARAN :
+                            </td>
+                            <td id="table-grand-total" class="py-3.5 px-4 text-right text-base text-emerald-700 tabular-nums">
+                                Rp 462.000
+                            </td>
+                            <td colspan="2" class="py-3.5 px-4 text-xs font-normal text-slate-500">
+                                <span id="table-footer-count">3 item tercatat</span>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <!-- KOLOM TANDA TANGAN RESMI -->
+        <section class="hidden print-flex justify-between items-start pt-10 px-8 text-sm text-slate-800 break-inside-avoid">
+            <div class="text-center w-56">
+                <p class="mb-16">Dibuat Oleh,<br><span class="text-xs text-slate-500">Admin Proyek</span></p>
+                <div class="border-b border-slate-800 w-48 mx-auto mb-1"></div>
+                <p class="text-xs text-slate-600">Tanggal: ____ / ____ / 2026</p>
+            </div>
+            <div class="text-center w-56">
+                <p class="mb-16">Disetujui Oleh,<br><span class="text-xs text-slate-500">Pimpinan Proyek</span></p>
+                <div class="border-b border-slate-800 w-48 mx-auto mb-1"></div>
+                <p class="text-xs text-slate-600">Tanggal: ____ / ____ / 2026</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- JAVASCRIPT ARCHITECTURE: MULTI-PROJECT + GOOGLE SHEETS CLOUD SYNC     -->
+    <!-- ===================================================================== -->
+    <script>
+        /**
+         * KONFIGURASI GOOGLE APPS SCRIPT (OPSIONAL: ISI URL WEB APP DI SINI AGAR OTOMATIS TERHUBUNG DI GOOGLE SITES)
+         * Contoh: const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
+         */
+        const DEFAULT_GAS_URL = "";
+
+        const STORAGE_KEY = 'proyek_rekap_multiproject_v2';
+        const GAS_URL_STORAGE_KEY = 'proyek_rekap_gas_url_v1';
+        const CONSOLIDATED_ID = 'ALL_PROJECTS';
+
+        const DEFAULT_STATE = {
+            activeProjectId: 'PRJ-001',
+            projects: [
+                {
+                    id: 'PRJ-001',
+                    namaPekerjaan: 'Pengecatan Kantor Pegadaian UPC Margorejo, Surabaya',
+                    lokasi: 'Surabaya',
+                    periode: 'November 2026',
+                    rab: 5000000,
+                    transaksi: [
+                        {
+                            id: 'exp-101',
+                            tanggal: '2026-11-18',
+                            kategori: 'Material',
+                            uraian: 'lem rajawali 3 kg',
+                            volume: 3,
+                            harga: 69000,
+                            keterangan: 'Tk. SBR Lingkar Timur'
+                        },
+                        {
+                            id: 'exp-102',
+                            tanggal: '2026-11-18',
+                            kategori: 'Material',
+                            uraian: 'acian putih 2 sak',
+                            volume: 2,
+                            harga: 120000,
+                            keterangan: 'Tk. SBR Lingkar Timur'
+                        },
+                        {
+                            id: 'exp-103',
+                            tanggal: '2026-11-18',
+                            kategori: 'Material',
+                            uraian: 'kapi gg karet',
+                            volume: 1,
+                            harga: 15000,
+                            keterangan: 'Tk. SBR Lingkar Timur'
+                        }
+                    ]
+                },
+                {
+                    id: 'PRJ-002',
+                    namaPekerjaan: 'Renovasi & Pengecatan UPC Sidoarjo Kota',
+                    lokasi: 'Sidoarjo',
+                    periode: 'Desember 2026',
+                    rab: 7500000,
+                    transaksi: [
+                        {
+                            id: 'exp-201',
+                            tanggal: '2026-12-02',
+                            kategori: 'Material',
+                            uraian: 'Cat Tembok Dulux Weathershield 20L',
+                            volume: 2,
+                            harga: 1450000,
+                            keterangan: 'Depo Bangunan Sidoarjo'
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Penyimpanan in-memory fallback jika localStorage diblokir oleh iframe Google Sites
+        let memoryStateFallback = null;
+        let memoryGasUrlFallback = DEFAULT_GAS_URL;
+        let appState = loadState();
+
+        const CATEGORY_STYLES = {
+            'Material': { badge: 'bg-blue-50 text-blue-700 border-blue-200', bar: 'bg-blue-500' },
+            'Upah Tenaga Kerja': { badge: 'bg-amber-50 text-amber-700 border-amber-200', bar: 'bg-amber-500' },
+            'Operasional & Transport': { badge: 'bg-purple-50 text-purple-700 border-purple-200', bar: 'bg-purple-500' },
+            'Peralatan': { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', bar: 'bg-emerald-500' },
+            'Lain-lain': { badge: 'bg-slate-100 text-slate-700 border-slate-200', bar: 'bg-slate-500' }
+        };
+
+        /**
+         * 1. SAFE STORAGE & GOOGLE SHEETS CLOUD SYNC ENGINE
+         */
+        function getGasUrl() {
+            if (DEFAULT_GAS_URL && DEFAULT_GAS_URL.trim() !== '') {
+                return DEFAULT_GAS_URL.trim();
+            }
+            try {
+                return localStorage.getItem(GAS_URL_STORAGE_KEY) || memoryGasUrlFallback || '';
+            } catch (e) {
+                return memoryGasUrlFallback || '';
+            }
+        }
+
+        function setGasUrl(url) {
+            memoryGasUrlFallback = url;
+            try {
+                if (url) {
+                    localStorage.setItem(GAS_URL_STORAGE_KEY, url);
+                } else {
+                    localStorage.removeItem(GAS_URL_STORAGE_KEY);
+                }
+            } catch (e) {
+                // Abaikan jika sandboxed iframe memblokir localStorage
+            }
+            updateCloudStatusUI();
+        }
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
+                        return parsed;
+                    }
+                }
+            } catch (err) {
+                // Fallback ke memoryStateFallback jika iframe Google Sites memblokir localStorage
+            }
+            return memoryStateFallback || JSON.parse(JSON.stringify(DEFAULT_STATE));
+        }
+
+        function saveState(autoSyncCloud = true) {
+            memoryStateFallback = JSON.parse(JSON.stringify(appState));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } catch (err) {
+                // Tetap aman di memori meskipun localStorage diblokir iframe
+            }
+
+            if (autoSyncCloud && getGasUrl()) {
+                pushAllToCloud(false);
+            }
+        }
+
+        function updateCloudStatusUI(syncState = 'idle') {
+            const url = getGasUrl();
+            const dot = document.getElementById('cloud-status-dot');
+            const text = document.getElementById('cloud-status-text');
+            const modalBadge = document.getElementById('modal-cloud-badge');
+            const disconnectBtn = document.getElementById('disconnect-gas-btn');
+
+            if (!url) {
+                dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+                text.textContent = 'Cloud / Backup';
+                if (modalBadge) {
+                    modalBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
+                    modalBadge.textContent = 'Mode Lokal';
+                }
+                if (disconnectBtn) disconnectBtn.classList.add('hidden');
+                return;
+            }
+
+            if (disconnectBtn) disconnectBtn.classList.remove('hidden');
+
+            if (syncState === 'syncing') {
+                dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+                text.textContent = 'Menyinkronkan...';
+            } else if (syncState === 'error') {
+                dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+                text.textContent = 'Gagal Sync';
+                if (modalBadge) {
+                    modalBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700';
+                    modalBadge.textContent = 'Gangguan Koneksi';
+                }
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+                text.textContent = 'Sheets Terhubung';
+                if (modalBadge) {
+                    modalBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+                    modalBadge.textContent = 'Terhubung ke Google Sheets';
+                }
+            }
+        }
+
+        async function pullFromCloud(showNotification = false) {
+            const url = getGasUrl();
+            if (!url) return;
+
+            updateCloudStatusUI('syncing');
+            try {
+                const res = await fetch(url, { method: 'GET' });
+                const json = await res.json();
+
+                if (json.status === 'success' && Array.isArray(json.data)) {
+                    if (json.data.length > 0) {
+                        const prevActive = appState.activeProjectId;
+                        appState.projects = json.data;
+                        const exists = appState.projects.some(p => p.id === prevActive) || prevActive === CONSOLIDATED_ID;
+                        appState.activeProjectId = exists ? prevActive : appState.projects[0].id;
+                        saveState(false);
+                        renderDashboard();
+                        if (showNotification) showToast('Data berhasil ditarik dari Google Sheets.', 'success');
+                    } else {
+                        // Jika Google Sheets masih kosong, kirim data awal otomatis
+                        await pushAllToCloud(false);
+                        if (showNotification) showToast('Google Sheets kosong. Data awal berhasil diunggah.', 'info');
+                    }
+                    updateCloudStatusUI('connected');
+                } else {
+                    throw new Error(json.message || 'Respon tidak valid');
+                }
+            } catch (err) {
+                console.error('Pull Cloud Error:', err);
+                updateCloudStatusUI('error');
+                if (showNotification) showToast('Gagal terhubung ke Google Sheets. Periksa URL Web App.', 'error');
+            }
+        }
+
+        async function pushAllToCloud(showNotification = false) {
+            const url = getGasUrl();
+            if (!url) {
+                if (showNotification) showToast('Masukkan URL Web App Google Apps Script terlebih dahulu.', 'error');
+                return;
+            }
+
+            updateCloudStatusUI('syncing');
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'SYNC_ALL',
+                        data: appState
+                    })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    updateCloudStatusUI('connected');
+                    if (showNotification) showToast('Seluruh data berhasil disimpan ke Google Sheets.', 'success');
+                } else {
+                    throw new Error(json.message || 'Gagal menyimpan');
+                }
+            } catch (err) {
+                console.error('Push Cloud Error:', err);
+                updateCloudStatusUI('error');
+                if (showNotification) showToast('Gagal mengirim data ke Google Sheets.', 'error');
+            }
+        }
+
+        function openCloudModal() {
+            const modal = document.getElementById('cloud-modal');
+            document.getElementById('gas-url-input').value = getGasUrl();
+            updateCloudStatusUI();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCloudModal() {
+            const modal = document.getElementById('cloud-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function saveGasUrlAndPull() {
+            const url = document.getElementById('gas-url-input').value.trim();
+            if (!url || !url.startsWith('https://script.google.com/')) {
+                showToast('URL harus berawalan https://script.google.com/...', 'error');
+                return;
+            }
+            setGasUrl(url);
+            pullFromCloud(true);
+        }
+
+        function disconnectGasUrl() {
+            setGasUrl('');
+            document.getElementById('gas-url-input').value = '';
+            showToast('Koneksi Google Sheets diputuskan.', 'info');
+        }
+
+        /**
+         * 2. BACKUP & RESTORE JSON
+         */
+        function exportBackupJSON() {
+            const dataStr = JSON.stringify(appState, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            link.href = url;
+            link.download = `backup_rekap_proyek_${dateStr}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('File backup JSON berhasil diunduh.', 'success');
+        }
+
+        function importBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
+                        appState = parsed;
+                        saveState(true);
+                        resetForm();
+                        resetFilters();
+                        renderDashboard();
+                        closeCloudModal();
+                        showToast('Data backup berhasil dimuat!', 'success');
+                    } else {
+                        showToast('Format file JSON tidak sesuai.', 'error');
+                    }
+                } catch (err) {
+                    showToast('File rusak atau bukan format JSON yang valid.', 'error');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        /**
+         * 3. SELECTORS & HELPERS
+         */
+        function isConsolidatedMode() {
+            return appState.activeProjectId === CONSOLIDATED_ID;
+        }
+
+        function getActiveProject() {
+            if (isConsolidatedMode()) return null;
+            let proj = appState.projects.find(p => p.id === appState.activeProjectId);
+            if (!proj && appState.projects.length > 0) {
+                proj = appState.projects[0];
+                appState.activeProjectId = proj.id;
+            }
+            return proj;
+        }
+
+        function getActiveTransactionsWithContext() {
+            if (isConsolidatedMode()) {
+                const merged = [];
+                appState.projects.forEach(proj => {
+                    (proj.transaksi || []).forEach(tx => {
+                        merged.push({
+                            ...tx,
+                            _projectId: proj.id,
+                            _projectName: proj.namaPekerjaan,
+                            _projectLokasi: proj.lokasi
+                        });
+                    });
+                });
+                return merged;
+            } else {
+                const proj = getActiveProject();
+                if (!proj) return [];
+                return (proj.transaksi || []).map(tx => ({
+                    ...tx,
+                    _projectId: proj.id,
+                    _projectName: proj.namaPekerjaan,
+                    _projectLokasi: proj.lokasi
+                }));
+            }
+        }
+
+        function formatRupiah(amount) {
+            const num = Number(amount) || 0;
+            return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+        }
+
+        function formatNumber(num) {
+            const val = Number(num) || 0;
+            return val.toLocaleString('id-ID', { maximumFractionDigits: 2 });
+        }
+
+        function formatDateID(isoDate) {
+            if (!isoDate) return '-';
+            const parts = isoDate.split('-');
+            if (parts.length !== 3) return isoDate;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function getTodayFormattedID() {
+            const now = new Date();
+            const d = String(now.getDate()).padStart(2, '0');
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const y = now.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        /**
+         * 4. FILTERING & SORTING
+         */
+        function getFilteredExpenses() {
+            const searchEl = document.getElementById('filter-search');
+            const categoryEl = document.getElementById('filter-category');
+            const sortByEl = document.getElementById('sort-by');
+
+            const searchQuery = searchEl ? searchEl.value.trim().toLowerCase() : '';
+            const categoryFilter = categoryEl ? categoryEl.value : 'ALL';
+            const sortBy = sortByEl ? sortByEl.value : 'default';
+
+            const hasActiveFilter = searchQuery !== '' || categoryFilter !== 'ALL';
+            const resetBtn = document.getElementById('reset-filter-btn');
+            if (resetBtn) {
+                resetBtn.classList.toggle('hidden', !hasActiveFilter);
+            }
+
+            const sourceList = getActiveTransactionsWithContext();
+
+            let result = sourceList.filter(item => {
+                const matchSearch = !searchQuery || 
+                    item.uraian.toLowerCase().includes(searchQuery) || 
+                    (item.keterangan && item.keterangan.toLowerCase().includes(searchQuery)) ||
+                    (item._projectLokasi && item._projectLokasi.toLowerCase().includes(searchQuery));
+                
+                const matchCategory = categoryFilter === 'ALL' || item.kategori === categoryFilter;
+                return matchSearch && matchCategory;
+            });
+
+            if (sortBy === 'date-desc') {
+                result.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+            } else if (sortBy === 'date-asc') {
+                result.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+            } else if (sortBy === 'total-desc') {
+                result.sort((a, b) => (b.volume * b.harga) - (a.volume * a.harga));
+            } else if (sortBy === 'total-asc') {
+                result.sort((a, b) => (a.volume * a.harga) - (b.volume * b.harga));
+            }
+
+            return result;
+        }
+
+        /**
+         * 5. RENDERERS
+         */
+        function renderProjectSwitcher() {
+            const switcher = document.getElementById('project-switcher');
+            const targetSelector = document.getElementById('input-target-project');
+
+            const projectOptions = appState.projects.map(p => 
+                `<option value="${p.id}">[${escapeHTML(p.lokasi)}] ${escapeHTML(p.namaPekerjaan)}</option>`
+            ).join('');
+
+            switcher.innerHTML = `
+                ${projectOptions}
+                <option value="${CONSOLIDATED_ID}">📊 Semua Proyek (Rekap Konsolidasi - ${appState.projects.length} Lokasi)</option>
+            `;
+            switcher.value = appState.activeProjectId;
+            targetSelector.innerHTML = projectOptions;
+        }
+
+        function renderDashboard() {
+            renderProjectSwitcher();
+
+            const consolidated = isConsolidatedMode();
+            const activeProj = getActiveProject();
+
+            document.getElementById('report-print-date').textContent = `Tanggal Cetak: ${getTodayFormattedID()}`;
+            document.getElementById('edit-active-project-btn').classList.toggle('hidden', consolidated);
+            document.getElementById('budget-edit-icon').classList.toggle('hidden', consolidated);
+            document.getElementById('form-project-selector-wrapper').classList.toggle('hidden', !consolidated);
+
+            document.getElementById('th-project-col').classList.toggle('hidden', !consolidated);
+            document.getElementById('tfoot-label-colspan').setAttribute('colspan', consolidated ? '7' : '6');
+
+            if (consolidated) {
+                const lokasiList = [...new Set(appState.projects.map(p => p.lokasi))].join(', ');
+                document.getElementById('report-main-title').textContent = 'REKAPITULASI KONSOLIDASI PENGELUARAN PROYEK';
+                document.getElementById('display-pekerjaan').textContent = `Gabungan Seluruh Proyek (${appState.projects.length} Proyek Aktif)`;
+                document.getElementById('display-lokasi').textContent = lokasiList || 'Semua Lokasi';
+                document.getElementById('display-periode').textContent = 'Semua Periode';
+            } else if (activeProj) {
+                document.getElementById('report-main-title').textContent = 'REKAPITULASI PENGELUARAN PROYEK';
+                document.getElementById('display-pekerjaan').textContent = activeProj.namaPekerjaan;
+                document.getElementById('display-lokasi').textContent = activeProj.lokasi;
+                document.getElementById('display-periode').textContent = activeProj.periode;
+            }
+
+            const allActiveExpenses = getActiveTransactionsWithContext();
+            const filteredExpenses = getFilteredExpenses();
+
+            const totalFiltered = filteredExpenses.reduce((sum, item) => sum + (item.volume * item.harga), 0);
+            const totalAllActive = allActiveExpenses.reduce((sum, item) => sum + (item.volume * item.harga), 0);
+
+            const totalRab = consolidated
+                ? appState.projects.reduce((sum, p) => sum + (Number(p.rab) || 0), 0)
+                : (Number(activeProj?.rab) || 0);
+
+            renderTable(filteredExpenses, totalFiltered, consolidated);
+            renderKPIs(filteredExpenses, totalFiltered, allActiveExpenses, totalAllActive, totalRab);
+            renderBreakdowns(filteredExpenses, totalFiltered, consolidated);
+            updateVendorDatalist(allActiveExpenses);
+        }
+
+        function renderTable(items, totalAmount, consolidated) {
+            const tbody = document.getElementById('expense-table-body');
+            const emptyColspan = consolidated ? 10 : 9;
+            
+            if (items.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${emptyColspan}" class="py-10 px-4 text-center text-slate-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-10 h-10 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <p class="text-sm font-medium text-slate-600">Belum ada data pengeluaran pada tampilan ini</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Gunakan form di atas untuk menambah transaksi pengeluaran proyek.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = items.map((item, index) => {
+                    const rowTotal = item.volume * item.harga;
+                    const catStyle = CATEGORY_STYLES[item.kategori] || CATEGORY_STYLES['Lain-lain'];
+
+                    const projectCell = consolidated 
+                        ? `<td class="py-3 px-4 whitespace-nowrap">
+                               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 badge-print">
+                                   ${escapeHTML(item._projectLokasi)}
+                               </span>
+                           </td>` 
+                        : '';
+
+                    return `
+                        <tr class="hover:bg-slate-50/90 transition group">
+                            <td class="py-3 px-4 text-center text-slate-500 font-medium tabular-nums">${index + 1}</td>
+                            <td class="py-3 px-4 text-slate-700 tabular-nums whitespace-nowrap">${formatDateID(item.tanggal)}</td>
+                            ${projectCell}
+                            <td class="py-3 px-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${catStyle.badge} badge-print">
+                                    ${escapeHTML(item.kategori)}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 font-medium text-slate-900">${escapeHTML(item.uraian)}</td>
+                            <td class="py-3 px-4 text-right text-slate-700 tabular-nums">${formatNumber(item.volume)}</td>
+                            <td class="py-3 px-4 text-right text-slate-700 tabular-nums whitespace-nowrap">${formatRupiah(item.harga)}</td>
+                            <td class="py-3 px-4 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">${formatRupiah(rowTotal)}</td>
+                            <td class="py-3 px-4 text-slate-600 text-xs sm:text-sm">${escapeHTML(item.keterangan || '-')}</td>
+                            <td class="py-3 px-4 text-center whitespace-nowrap no-print">
+                                <div class="inline-flex items-center justify-center gap-1">
+                                    <button type="button" onclick="startEditExpense('${item._projectId}', '${item.id}')" title="Edit Baris" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    </button>
+                                    <button type="button" onclick="confirmDeleteExpense('${item._projectId}', '${item.id}')" title="Hapus Baris" class="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('table-grand-total').textContent = formatRupiah(totalAmount);
+            document.getElementById('table-footer-count').textContent = `${items.length} item ditampilkan`;
+        }
+
+        function renderKPIs(filteredExpenses, totalFiltered, allExpenses, totalAll, totalRab) {
+            const isFiltered = filteredExpenses.length !== allExpenses.length;
+
+            document.getElementById('kpi-total-expense').textContent = formatRupiah(totalFiltered);
+            document.getElementById('kpi-filtered-note').textContent = isFiltered 
+                ? `Terfilter dari total ${formatRupiah(totalAll)}` 
+                : (isConsolidatedMode() ? 'Total gabungan seluruh proyek' : 'Akumulasi pengeluaran proyek');
+
+            const count = filteredExpenses.length;
+            const avg = count > 0 ? totalFiltered / count : 0;
+            document.getElementById('kpi-item-count').textContent = `${count} Item`;
+            document.getElementById('kpi-avg-expense').textContent = `Rata-rata ${formatRupiah(avg)} / item`;
+
+            if (count > 0) {
+                let maxItem = filteredExpenses[0];
+                let maxVal = maxItem.volume * maxItem.harga;
+                filteredExpenses.forEach(item => {
+                    const val = item.volume * item.harga;
+                    if (val > maxVal) {
+                        maxVal = val;
+                        maxItem = item;
+                    }
+                });
+                document.getElementById('kpi-max-amount').textContent = formatRupiah(maxVal);
+                const maxDesc = `${maxItem.uraian} (${maxItem._projectLokasi})`;
+                const labelEl = document.getElementById('kpi-max-label');
+                labelEl.textContent = maxDesc;
+                labelEl.title = maxDesc;
+            } else {
+                document.getElementById('kpi-max-amount').textContent = 'Rp 0';
+                document.getElementById('kpi-max-label').textContent = '-';
+            }
+
+            const remaining = totalRab - totalAll;
+            const usagePercent = totalRab > 0 ? (totalAll / totalRab) * 100 : 0;
+            const clampedPercent = Math.min(Math.max(usagePercent, 0), 100);
+
+            const remEl = document.getElementById('kpi-remaining-budget');
+            const badgeEl = document.getElementById('kpi-budget-percent');
+            const barEl = document.getElementById('kpi-budget-bar');
+
+            remEl.textContent = formatRupiah(remaining);
+            badgeEl.textContent = `${usagePercent.toFixed(1)}%`;
+            barEl.style.width = `${clampedPercent}%`;
+            document.getElementById('kpi-total-budget-label').textContent = `Dari Pagu RAB: ${formatRupiah(totalRab)}`;
+
+            if (remaining < 0) {
+                remEl.className = 'text-2xl font-bold text-rose-600 tabular-nums';
+                badgeEl.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 tabular-nums';
+                barEl.className = 'bg-rose-500 h-1.5 rounded-full transition-all duration-300';
+            } else if (usagePercent >= 80) {
+                remEl.className = 'text-2xl font-bold text-amber-600 tabular-nums';
+                badgeEl.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 tabular-nums';
+                barEl.className = 'bg-amber-500 h-1.5 rounded-full transition-all duration-300';
+            } else {
+                remEl.className = 'text-2xl font-bold text-emerald-700 tabular-nums';
+                badgeEl.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 tabular-nums';
+                barEl.className = 'bg-emerald-500 h-1.5 rounded-full transition-all duration-300';
+            }
+        }
+
+        function renderBreakdowns(items, totalAmount, consolidated) {
+            const catContainer = document.getElementById('category-breakdown-container');
+            const vendorContainer = document.getElementById('vendor-breakdown-container');
+            const secTitle = document.querySelector('#secondary-chart-title span:last-child');
+            const secSub = document.getElementById('secondary-chart-subtitle');
+
+            if (items.length === 0 || totalAmount === 0) {
+                catContainer.innerHTML = '<p class="text-xs text-slate-400 italic py-4 text-center">Belum ada data transaksi untuk ditampilkan.</p>';
+                vendorContainer.innerHTML = '<p class="text-xs text-slate-400 italic py-4 text-center">Belum ada data ringkasan.</p>';
+                return;
+            }
+
+            const catMap = {};
+            items.forEach(item => {
+                const sub = item.volume * item.harga;
+                catMap[item.kategori] = (catMap[item.kategori] || 0) + sub;
+            });
+
+            const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+            catContainer.innerHTML = sortedCats.map(([cat, amount]) => {
+                const pct = ((amount / totalAmount) * 100).toFixed(1);
+                const style = CATEGORY_STYLES[cat] || CATEGORY_STYLES['Lain-lain'];
+                return `
+                    <div>
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="font-semibold text-slate-700">${escapeHTML(cat)}</span>
+                            <span class="tabular-nums text-slate-600 font-medium">${formatRupiah(amount)} <span class="text-slate-400">(${pct}%)</span></span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div class="${style.bar} h-2 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (consolidated) {
+                secTitle.textContent = 'Perbandingan Pengeluaran Antar Lokasi Proyek';
+                secSub.textContent = `${appState.projects.length} Lokasi`;
+
+                const projSummaries = appState.projects.map(p => {
+                    const spent = (p.transaksi || []).reduce((s, tx) => s + (tx.volume * tx.harga), 0);
+                    return {
+                        lokasi: p.lokasi,
+                        nama: p.namaPekerjaan,
+                        spent,
+                        rab: p.rab,
+                        count: (p.transaksi || []).length
+                    };
+                }).sort((a, b) => b.spent - a.spent);
+
+                vendorContainer.innerHTML = projSummaries.map(ps => {
+                    const sharePct = totalAmount > 0 ? ((ps.spent / totalAmount) * 100).toFixed(0) : 0;
+                    const rabPct = ps.rab > 0 ? ((ps.spent / ps.rab) * 100).toFixed(0) : 0;
+                    return `
+                        <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+                            <div class="min-w-0 pr-2">
+                                <p class="font-bold text-slate-800 truncate">[${escapeHTML(ps.lokasi)}] ${escapeHTML(ps.nama)}</p>
+                                <p class="text-[11px] text-slate-500">${ps.count} item • Serapan RAB: ${rabPct}% (${sharePct}% dari total)</p>
+                            </div>
+                            <div class="font-bold text-slate-900 tabular-nums shrink-0">
+                                ${formatRupiah(ps.spent)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                secTitle.textContent = 'Ringkasan per Toko / Vendor / Keterangan';
+                secSub.textContent = 'Top Supplier';
+
+                const vendorMap = {};
+                items.forEach(item => {
+                    const vName = (item.keterangan && item.keterangan.trim()) ? item.keterangan.trim() : 'Tanpa Keterangan';
+                    const sub = item.volume * item.harga;
+                    if (!vendorMap[vName]) {
+                        vendorMap[vName] = { total: 0, count: 0 };
+                    }
+                    vendorMap[vName].total += sub;
+                    vendorMap[vName].count += 1;
+                });
+
+                const sortedVendors = Object.entries(vendorMap).sort((a, b) => b[1].total - a[1].total);
+                vendorContainer.innerHTML = sortedVendors.map(([vendor, info]) => {
+                    const pct = ((info.total / totalAmount) * 100).toFixed(0);
+                    return `
+                        <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+                            <div class="min-w-0 pr-2">
+                                <p class="font-semibold text-slate-800 truncate">${escapeHTML(vendor)}</p>
+                                <p class="text-[11px] text-slate-500">${info.count} transaksi (${pct}%)</p>
+                            </div>
+                            <div class="font-bold text-slate-900 tabular-nums shrink-0">
+                                ${formatRupiah(info.total)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function updateVendorDatalist(allExpenses) {
+            const datalist = document.getElementById('vendor-suggestions');
+            const uniqueVendors = [...new Set(allExpenses.map(e => e.keterangan).filter(Boolean))];
+            datalist.innerHTML = uniqueVendors.map(v => `<option value="${escapeHTML(v)}">`).join('');
+        }
+
+        /**
+         * 6. PROJECT MANAGEMENT
+         */
+        function switchProject(projectId) {
+            appState.activeProjectId = projectId;
+            saveState(false);
+            resetForm();
+            resetFilters();
+            renderDashboard();
+        }
+
+        function handleBudgetCardClick() {
+            if (isConsolidatedMode()) {
+                showToast('Pilih salah satu proyek spesifik untuk mengubah pagu RAB-nya.', 'info');
+                return;
+            }
+            openProjectModal(true);
+        }
+
+        function openProjectModal(isEditMode = false) {
+            const modal = document.getElementById('project-modal');
+            const titleEl = document.getElementById('project-modal-title');
+            const editIdEl = document.getElementById('project-edit-id');
+            const deleteBtn = document.getElementById('delete-project-btn');
+
+            if (isEditMode) {
+                const proj = getActiveProject();
+                if (!proj) return;
+                titleEl.textContent = 'Edit Detail & Anggaran Proyek';
+                editIdEl.value = proj.id;
+                document.getElementById('proj-nama').value = proj.namaPekerjaan;
+                document.getElementById('proj-lokasi').value = proj.lokasi;
+                document.getElementById('proj-periode').value = proj.periode;
+                document.getElementById('proj-rab').value = proj.rab;
+                deleteBtn.classList.toggle('hidden', appState.projects.length <= 1);
+            } else {
+                titleEl.textContent = 'Tambah Lokasi Proyek Baru';
+                editIdEl.value = '';
+                document.getElementById('project-form').reset();
+                document.getElementById('proj-rab').value = 5000000;
+                deleteBtn.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => document.getElementById('proj-nama').focus(), 50);
+        }
+
+        function closeProjectModal() {
+            const modal = document.getElementById('project-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function handleSaveProject(event) {
+            event.preventDefault();
+            const editId = document.getElementById('project-edit-id').value;
+            const namaPekerjaan = document.getElementById('proj-nama').value.trim();
+            const lokasi = document.getElementById('proj-lokasi').value.trim();
+            const periode = document.getElementById('proj-periode').value.trim();
+            const rab = parseFloat(document.getElementById('proj-rab').value) || 0;
+
+            if (!namaPekerjaan || !lokasi || !periode) {
+                showToast('Lengkapi seluruh informasi proyek.', 'error');
+                return;
+            }
+
+            if (editId) {
+                const proj = appState.projects.find(p => p.id === editId);
+                if (proj) {
+                    proj.namaPekerjaan = namaPekerjaan;
+                    proj.lokasi = lokasi;
+                    proj.periode = periode;
+                    proj.rab = rab;
+                    showToast('Detail proyek berhasil diperbarui.', 'success');
+                }
+            } else {
+                const newProj = {
+                    id: 'PRJ-' + Date.now(),
+                    namaPekerjaan,
+                    lokasi,
+                    periode,
+                    rab,
+                    transaksi: []
+                };
+                appState.projects.push(newProj);
+                appState.activeProjectId = newProj.id;
+                showToast(`Proyek baru di ${lokasi} berhasil ditambahkan.`, 'success');
+            }
+
+            saveState(true);
+            closeProjectModal();
+            resetForm();
+            renderDashboard();
+        }
+
+        function confirmDeleteProject() {
+            const proj = getActiveProject();
+            if (!proj) return;
+            if (appState.projects.length <= 1) {
+                showToast('Minimal harus tersisa 1 proyek aktif.', 'error');
+                return;
+            }
+
+            closeProjectModal();
+            showConfirmModal(
+                'Hapus Proyek Ini?',
+                `Seluruh data transaksi pada "${proj.namaPekerjaan}" (${proj.lokasi}) akan dihapus permanen.`,
+                () => {
+                    appState.projects = appState.projects.filter(p => p.id !== proj.id);
+                    appState.activeProjectId = appState.projects[0].id;
+                    saveState(true);
+                    resetForm();
+                    renderDashboard();
+                    showToast('Proyek berhasil dihapus.', 'info');
+                }
+            );
+        }
+
+        /**
+         * 7. EXPENSE CRUD HANDLERS
+         */
+        function updateLiveTotalPreview() {
+            const vol = parseFloat(document.getElementById('input-volume').value) || 0;
+            const harga = parseFloat(document.getElementById('input-harga').value) || 0;
+            document.getElementById('live-total-preview').textContent = formatRupiah(vol * harga);
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const editId = document.getElementById('edit-id').value;
+            const sourceProjectId = document.getElementById('edit-source-project-id').value;
+            const tanggal = document.getElementById('input-tanggal').value;
+            const kategori = document.getElementById('input-kategori').value;
+            const uraian = document.getElementById('input-uraian').value.trim();
+            const volume = parseFloat(document.getElementById('input-volume').value);
+            const harga = parseFloat(document.getElementById('input-harga').value);
+            const keterangan = document.getElementById('input-keterangan').value.trim();
+
+            if (!tanggal || !uraian || isNaN(volume) || volume <= 0 || isNaN(harga) || harga < 0) {
+                showToast('Mohon lengkapi data dengan angka yang valid.', 'error');
+                return;
+            }
+
+            const targetProjectId = isConsolidatedMode()
+                ? document.getElementById('input-target-project').value
+                : appState.activeProjectId;
+
+            if (editId) {
+                const oldProj = appState.projects.find(p => p.id === (sourceProjectId || targetProjectId));
+                const newProj = appState.projects.find(p => p.id === targetProjectId);
+
+                if (oldProj && newProj) {
+                    const txIndex = oldProj.transaksi.findIndex(t => t.id === editId);
+                    if (txIndex !== -1) {
+                        const updatedTx = {
+                            id: editId,
+                            tanggal,
+                            kategori,
+                            uraian,
+                            volume,
+                            harga,
+                            keterangan
+                        };
+
+                        if (oldProj.id === newProj.id) {
+                            oldProj.transaksi[txIndex] = updatedTx;
+                        } else {
+                            oldProj.transaksi.splice(txIndex, 1);
+                            newProj.transaksi.push(updatedTx);
+                        }
+                        showToast('Item pengeluaran berhasil diperbarui.', 'success');
+                    }
+                }
+            } else {
+                const targetProj = appState.projects.find(p => p.id === targetProjectId);
+                if (targetProj) {
+                    targetProj.transaksi.push({
+                        id: 'exp-' + Date.now(),
+                        tanggal,
+                        kategori,
+                        uraian,
+                        volume,
+                        harga,
+                        keterangan
+                    });
+                    showToast(`Pengeluaran ditambahkan ke ${targetProj.lokasi}.`, 'success');
+                }
+            }
+
+            saveState(true);
+            resetForm();
+            renderDashboard();
+        }
+
+        function startEditExpense(projectId, expenseId) {
+            const proj = appState.projects.find(p => p.id === projectId);
+            if (!proj) return;
+            const item = proj.transaksi.find(e => e.id === expenseId);
+            if (!item) return;
+
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('edit-source-project-id').value = proj.id;
+            document.getElementById('input-target-project').value = proj.id;
+            document.getElementById('input-tanggal').value = item.tanggal;
+            document.getElementById('input-kategori').value = item.kategori;
+            document.getElementById('input-uraian').value = item.uraian;
+            document.getElementById('input-volume').value = item.volume;
+            document.getElementById('input-harga').value = item.harga;
+            document.getElementById('input-keterangan').value = item.keterangan || '';
+
+            updateLiveTotalPreview();
+
+            document.getElementById('form-title').textContent = `Edit Pengeluaran: ${item.uraian}`;
+            document.getElementById('form-mode-indicator').className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+            document.getElementById('submit-btn-text').textContent = 'Simpan Perubahan';
+            document.getElementById('form-section').classList.add('ring-2', 'ring-amber-400');
+
+            document.getElementById('form-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function resetForm() {
+            document.getElementById('expense-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('edit-source-project-id').value = '';
+            
+            const activeExpenses = getActiveTransactionsWithContext();
+            const lastDate = activeExpenses.length > 0 
+                ? activeExpenses[activeExpenses.length - 1].tanggal 
+                : new Date().toISOString().split('T')[0];
+            document.getElementById('input-tanggal').value = lastDate;
+
+            document.getElementById('live-total-preview').textContent = 'Rp 0';
+            document.getElementById('form-title').textContent = 'Tambah Pengeluaran Baru';
+            document.getElementById('form-mode-indicator').className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+            document.getElementById('submit-btn-text').textContent = 'Simpan Pengeluaran';
+            document.getElementById('form-section').classList.remove('ring-2', 'ring-amber-400');
+        }
+
+        function confirmDeleteExpense(projectId, expenseId) {
+            const proj = appState.projects.find(p => p.id === projectId);
+            if (!proj) return;
+            const item = proj.transaksi.find(e => e.id === expenseId);
+            if (!item) return;
+
+            showConfirmModal(
+                'Hapus Item Pengeluaran?',
+                `Anda akan menghapus "${item.uraian}" senilai ${formatRupiah(item.volume * item.harga)}. Tindakan ini tidak dapat dibatalkan.`,
+                () => {
+                    proj.transaksi = proj.transaksi.filter(e => e.id !== expenseId);
+                    if (document.getElementById('edit-id').value === expenseId) {
+                        resetForm();
+                    }
+                    saveState(true);
+                    renderDashboard();
+                    showToast('Item pengeluaran telah dihapus.', 'info');
+                }
+            );
+        }
+
+        function applyFilters() {
+            renderDashboard();
+        }
+
+        function resetFilters() {
+            const searchEl = document.getElementById('filter-search');
+            const categoryEl = document.getElementById('filter-category');
+            const sortByEl = document.getElementById('sort-by');
+
+            if (searchEl) searchEl.value = '';
+            if (categoryEl) categoryEl.value = 'ALL';
+            if (sortByEl) sortByEl.value = 'default';
+            renderDashboard();
+        }
+
+        function confirmResetData() {
+            showConfirmModal(
+                'Reset ke Data Demo Awal?',
+                'Seluruh proyek tambahan dan transaksi Anda akan dikembalikan ke 2 proyek contoh awal (Surabaya & Sidoarjo).',
+                () => {
+                    appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+                    saveState(true);
+                    resetFilters();
+                    resetForm();
+                    renderDashboard();
+                    showToast('Data berhasil dikembalikan ke pengaturan demo awal.', 'success');
+                }
+            );
+        }
+
+        /**
+         * 8. EKSPOR CSV
+         */
+        function exportToCSV() {
+            const items = getFilteredExpenses();
+            if (items.length === 0) {
+                showToast('Tidak ada data untuk diekspor.', 'error');
+                return;
+            }
+
+            const consolidated = isConsolidatedMode();
+            const activeProj = getActiveProject();
+
+            const titleStr = consolidated 
+                ? 'REKAPITULASI KONSOLIDASI PENGELUARAN PROYEK' 
+                : 'REKAPITULASI PENGELUARAN PROYEK';
+            const pekerjaanStr = consolidated 
+                ? `Gabungan ${appState.projects.length} Proyek` 
+                : activeProj.namaPekerjaan;
+            const lokasiStr = consolidated 
+                ? [...new Set(appState.projects.map(p => p.lokasi))].join(', ') 
+                : activeProj.lokasi;
+            const periodeStr = consolidated ? 'Semua Periode' : activeProj.periode;
+
+            const rows = [
+                [titleStr],
+                ['Pekerjaan', pekerjaanStr],
+                ['Lokasi', lokasiStr],
+                ['Periode', periodeStr],
+                [],
+                consolidated
+                    ? ['No.', 'Tanggal', 'Lokasi Proyek', 'Kategori', 'Uraian Pengeluaran', 'Volume', 'Harga', 'Total Jumlah', 'Keterangan']
+                    : ['No.', 'Tanggal', 'Kategori', 'Uraian Pengeluaran', 'Volume', 'Harga', 'Total Jumlah', 'Keterangan']
+            ];
+
+            let grandTotal = 0;
+            items.forEach((item, idx) => {
+                const total = item.volume * item.harga;
+                grandTotal += total;
+                if (consolidated) {
+                    rows.push([
+                        idx + 1,
+                        formatDateID(item.tanggal),
+                        item._projectLokasi,
+                        item.kategori,
+                        item.uraian,
+                        item.volume,
+                        item.harga,
+                        total,
+                        item.keterangan || ''
+                    ]);
+                } else {
+                    rows.push([
+                        idx + 1,
+                        formatDateID(item.tanggal),
+                        item.kategori,
+                        item.uraian,
+                        item.volume,
+                        item.harga,
+                        total,
+                        item.keterangan || ''
+                    ]);
+                }
+            });
+
+            rows.push(
+                consolidated
+                    ? ['', '', '', '', '', '', 'TOTAL KESELURUHAN PENGELUARAN', grandTotal, '']
+                    : ['', '', '', '', '', 'TOTAL KESELURUHAN PENGELUARAN', grandTotal, '']
+            );
+
+            const csvContent = '\uFEFF' + rows.map(row => 
+                row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')
+            ).join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            const rawName = consolidated ? 'konsolidasi_semua_proyek' : activeProj.namaPekerjaan;
+            const safeFilename = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+            
+            link.href = url;
+            link.download = `rekap_${safeFilename || 'proyek'}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast(`File rekap_${safeFilename}.csv berhasil diunduh.`, 'success');
+        }
+
+        /**
+         * 9. TOAST, CONFIRM & INIT
+         */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-slate-900 text-white border-emerald-500',
+                error: 'bg-rose-900 text-white border-rose-500',
+                info: 'bg-slate-800 text-white border-blue-500'
+            };
+
+            const icons = {
+                success: '<svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>',
+                error: '<svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+                info: '<svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border-l-4 shadow-lg text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+            toast.innerHTML = `${icons[type] || icons.info}<span>${escapeHTML(message)}</span>`;
+            
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function showConfirmModal(title, message, onConfirmCallback) {
+            const modal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+
+            const okBtn = document.getElementById('confirm-ok-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            };
+
+            okBtn.onclick = () => {
+                closeModal();
+                if (typeof onConfirmCallback === 'function') {
+                    onConfirmCallback();
+                }
+            };
+
+            cancelBtn.onclick = closeModal;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderDashboard();
+            resetForm();
+            updateCloudStatusUI();
+            if (getGasUrl()) {
+                pullFromCloud(false);
+            }
+        });
+    </script>
+</body>
+</html>
